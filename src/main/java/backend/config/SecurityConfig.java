@@ -21,13 +21,15 @@ public class SecurityConfig {
 
     private static final Logger LOGGER = Logger.getLogger(SecurityConfig.class.getName());
     private final UserService userService;
+    private final JwtFilter jwtFilter;
 
-    public SecurityConfig(UserService userService) {
+    public SecurityConfig(UserService userService, JwtFilter jwtFilter) {
         this.userService = userService;
+        this.jwtFilter = jwtFilter;
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtFilter jwtFilter) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session
@@ -35,6 +37,8 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/posts").permitAll() // Allow all methods on exact /api/posts
+                        .requestMatchers("/api/posts/**").authenticated() // Sub-paths require auth
                         .requestMatchers("/api/user/**").authenticated()
                         .requestMatchers("/oauth2/authorization/**").permitAll()
                         .requestMatchers("/login/oauth2/code/**").permitAll()

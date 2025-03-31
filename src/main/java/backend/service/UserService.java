@@ -4,12 +4,13 @@ import backend.model.User;
 import backend.repository.UserRepository;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.nio.charset.StandardCharsets;
+import java.security.Key;
 import java.util.Optional;
 
 @Service
@@ -19,8 +20,8 @@ public class UserService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    private static final String SECRET_KEY = "58rJZYctShDfvcPWO6ACjw8DexOpYoiYp2h1ZO9BqJ4"; // source key used in jwtfilter
-    private static final long EXPIRATION_TIME = 86400000; // 24 hours ill change later
+    private static final String SECRET_KEY = "58rJZYctShDfvcPWO6ACjw8DexOpYoiYp2h1ZO9BqJ4"; // Matches JwtFilter
+    private static final long EXPIRATION_TIME = 86400000; // 24 hours
 
     public User signup(String username, String email, String password) {
         if (userRepository.findByUsername(username).isPresent() || userRepository.findByEmail(email).isPresent()) {
@@ -39,7 +40,6 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    // Updated to use email instead of username
     public String login(String email, String password) {
         User user = findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -86,11 +86,13 @@ public class UserService {
     }
 
     public String generateJwt(String userId) {
+        byte[] keyBytes = Decoders.BASE64.decode(SECRET_KEY); // Consistent with JwtFilter
+        Key key = Keys.hmacShaKeyFor(keyBytes);
         return Jwts.builder()
                 .setSubject(userId)
                 .setIssuedAt(new java.util.Date())
                 .setExpiration(new java.util.Date(System.currentTimeMillis() + EXPIRATION_TIME))
-                .signWith(Keys.hmacShaKeyFor(SECRET_KEY.getBytes(StandardCharsets.UTF_8)), SignatureAlgorithm.HS256)
+                .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
 
