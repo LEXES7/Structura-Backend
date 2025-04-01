@@ -5,6 +5,7 @@ import backend.model.User;
 import backend.service.UserService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -36,9 +37,12 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Allow OPTIONS for CORS
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/posts").permitAll() // Allow all methods on exact /api/posts
-                        .requestMatchers("/api/posts/**").authenticated() // Sub-paths require auth
+                        .requestMatchers("/api/posts").permitAll()
+                        .requestMatchers("/api/events/upcoming").permitAll()
+                        .requestMatchers("/api/events").permitAll() // For GET
+                        .requestMatchers("/api/events/**").authenticated() // POST, PUT, DELETE need auth
                         .requestMatchers("/api/user/**").authenticated()
                         .requestMatchers("/oauth2/authorization/**").permitAll()
                         .requestMatchers("/login/oauth2/code/**").permitAll()
@@ -66,6 +70,7 @@ public class SecurityConfig {
                                 });
 
                                 String jwt = userService.generateJwt(user.getId());
+                                LOGGER.info("Generated JWT: " + jwt);
                                 String redirectUrl = String.format(
                                         "http://localhost:5173/oauth-callback?token=%s&id=%s&username=%s&email=%s&isAdmin=%s&profilePicture=%s",
                                         jwt, user.getId(), user.getUsername(), user.getEmail(), user.isAdmin(), user.getProfilePicture()

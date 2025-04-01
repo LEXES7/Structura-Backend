@@ -21,11 +21,17 @@ import java.util.logging.Logger;
 @Component
 public class JwtFilter extends OncePerRequestFilter {
     private static final Logger LOGGER = Logger.getLogger(JwtFilter.class.getName());
-    private static final String SECRET_KEY = "58rJZYctShDfvcPWO6ACjw8DexOpYoiYp2h1ZO9BqJ4"; // secure key
+    private static final String SECRET_KEY = "58rJZYctShDfvcPWO6ACjw8DexOpYoiYp2h1ZO9BqJ4";
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
-            throws IOException, jakarta.servlet.ServletException { // Already declares
+            throws IOException, jakarta.servlet.ServletException {
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            response.setStatus(HttpServletResponse.SC_OK);
+            LOGGER.info("Handled OPTIONS preflight request for: " + request.getRequestURI());
+            return;
+        }
+
         String token = request.getHeader("Authorization");
 
         if (token != null && token.startsWith("Bearer ")) {
@@ -53,12 +59,6 @@ public class JwtFilter extends OncePerRequestFilter {
             }
         }
 
-        try {
-            chain.doFilter(request, response);
-        } catch (jakarta.servlet.ServletException e) {
-            LOGGER.severe("Servlet error in filter chain: " + e.getMessage());
-            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Internal server error");
-            return;
-        }
+        chain.doFilter(request, response);
     }
 }
