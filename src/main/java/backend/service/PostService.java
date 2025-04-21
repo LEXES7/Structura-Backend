@@ -19,7 +19,8 @@ public class PostService {
     @Autowired
     private PostRepository postRepository;
 
-    private static final String UPLOAD_DIR = "uploads/"; // Directory for uploaded images
+    // Updated to save files in src/main/resources/uploads/
+    private static final String UPLOAD_DIR = System.getProperty("user.dir") + "/src/main/resources/uploads/";
 
     public PostModel createPost(String userId, String postName, String postCategory, String postDescription, MultipartFile file) throws IOException {
         LOGGER.info("Creating post for userId: " + userId);
@@ -32,15 +33,21 @@ public class PostService {
         if (file != null && !file.isEmpty()) {
             String fileName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
             Path path = Paths.get(UPLOAD_DIR + fileName);
+            LOGGER.info("Saving file to: " + path.toString());
             Files.createDirectories(path.getParent()); // Ensure directory exists
             Files.write(path, file.getBytes());
-            post.setPostImg("/" + UPLOAD_DIR + fileName);
-            LOGGER.info("Uploaded file to: " + path);
+            post.setPostImg("/uploads/" + fileName); // Save relative path for frontend usage
+            LOGGER.info("File saved successfully: " + path.toString());
         } else {
             post.setPostImg("default.png"); // Default value as per your model
         }
 
         return postRepository.save(post);
+    }
+
+    public PostModel getPostById(String postId) {
+        return postRepository.findById(postId)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
     }
 
     public PostModel updatePost(String postId, String userId, String postName, String postCategory, String postDescription, MultipartFile file) throws IOException {
@@ -56,9 +63,11 @@ public class PostService {
         if (file != null && !file.isEmpty()) {
             String fileName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
             Path path = Paths.get(UPLOAD_DIR + fileName);
+            LOGGER.info("Saving file to: " + path.toString());
             Files.createDirectories(path.getParent());
             Files.write(path, file.getBytes());
-            post.setPostImg("/" + UPLOAD_DIR + fileName);
+            post.setPostImg("/uploads/" + fileName); // Save relative path for frontend usage
+            LOGGER.info("File updated successfully: " + path.toString());
         }
 
         return postRepository.save(post);
