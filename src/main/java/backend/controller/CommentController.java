@@ -1,6 +1,8 @@
 package backend.controller;
 
 import backend.model.CommentModel;
+import backend.model.User;
+import backend.repository.UserRepository;
 import backend.service.CommentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +20,8 @@ public class CommentController {
     private static final Logger LOGGER = Logger.getLogger(CommentController.class.getName());
     @Autowired
     private CommentService commentService;
+    @Autowired
+    private UserRepository userRepository;
 
     @PostMapping("/post/{postId}")
     public ResponseEntity<?> createComment(
@@ -25,12 +29,12 @@ public class CommentController {
             @RequestBody Map<String, String> request) {
         try {
             String userId = getCurrentUserId();
-            String username = getCurrentUsername();
+            String username = getCurrentUsername(userId);
             String content = request.get("content");
             if (content == null || content.trim().isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of("message", "Comment content cannot be empty"));
+                return ResponseEntity.badRequest().body(Map.of("message", "Comment content cannot be empty fill out"));
             }
-            LOGGER.info("Received POST /api/comments/post/" + postId + " for userId: " + userId);
+            LOGGER.info("Received POST /api/comments/post/" + postId + " for userId: " + userId + " with username: " + username);
             CommentModel comment = commentService.createComment(postId, userId, username, content);
             return ResponseEntity.ok(comment);
         } catch (Exception e) {
@@ -91,19 +95,18 @@ public class CommentController {
 
     private String getCurrentUserId() {
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        LOGGER.info("Principal type: " + principal.getClass().getName() + ", value: " + principal);
         if (principal instanceof UserDetails) {
             return ((UserDetails) principal).getUsername();
         } else {
-            return principal.toString();
+            return principal.toString(); // Returns userId (likely User.id)
         }
     }
 
-    private String getCurrentUsername() {
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        if (principal instanceof UserDetails) {
-            return ((UserDetails) principal).getUsername();
-        } else {
-            return "Anonymous";
-        }
+    private String getCurrentUsername(String userId) {
+        // Fetch user by ID (MongoDB _id)
+        return userRepository.findById(userId)
+                .map(user -> user.getUsername()) // Use username field (e.g., "sachintha")
+                .orElse("Anonymous");
     }
 }
