@@ -51,6 +51,44 @@ public class CommentController {
         }
     }
 
+    @PutMapping("/{commentId}")
+    public ResponseEntity<?> updateComment(
+            @PathVariable String commentId,
+            @RequestBody Map<String, String> request) {
+        try {
+            String userId = getCurrentUserId();
+            String content = request.get("content");
+            if (content == null || content.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Comment content cannot be empty"));
+            }
+            LOGGER.info("Received PUT /api/comments/" + commentId + " for userId: " + userId);
+            CommentModel updatedComment = commentService.updateComment(commentId, userId, content);
+            return ResponseEntity.ok(updatedComment);
+        } catch (IllegalAccessException e) {
+            LOGGER.severe("Unauthorized comment update: " + e.getMessage());
+            return ResponseEntity.status(403).body(Map.of("message", "You can only edit your own comments"));
+        } catch (Exception e) {
+            LOGGER.severe("Error updating comment: " + e.getMessage());
+            return ResponseEntity.status(500).body(Map.of("message", "Error updating comment: " + e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/{commentId}")
+    public ResponseEntity<?> deleteComment(@PathVariable String commentId) {
+        try {
+            String userId = getCurrentUserId();
+            LOGGER.info("Received DELETE /api/comments/" + commentId + " for userId: " + userId);
+            commentService.deleteComment(commentId, userId);
+            return ResponseEntity.ok(Map.of("message", "Comment deleted successfully"));
+        } catch (IllegalAccessException e) {
+            LOGGER.severe("Unauthorized comment deletion: " + e.getMessage());
+            return ResponseEntity.status(403).body(Map.of("message", "You can only delete your own comments"));
+        } catch (Exception e) {
+            LOGGER.severe("Error deleting comment: " + e.getMessage());
+            return ResponseEntity.status(500).body(Map.of("message", "Error deleting comment: " + e.getMessage()));
+        }
+    }
+
     private String getCurrentUserId() {
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         if (principal instanceof UserDetails) {
