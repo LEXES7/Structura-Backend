@@ -99,7 +99,7 @@ public class CommentController {
         if (principal instanceof UserDetails) {
             return ((UserDetails) principal).getUsername();
         } else {
-            return principal.toString(); // Returns userId (likely User.id)
+            return principal.toString();
         }
     }
 

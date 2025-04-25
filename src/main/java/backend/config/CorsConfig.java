@@ -18,10 +18,10 @@ public class CorsConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowCredentials(true);
-        config.addAllowedOrigin("http://localhost:5173"); // Allow frontend origin
-        config.addAllowedHeader("*"); // Allow all headers
-        config.addAllowedMethod("*"); // Allow all HTTP methods
-        config.setMaxAge(3600L); // Cache preflight response for 1 hour
+        config.addAllowedOrigin("http://localhost:5173"); // Allow frontend
+        config.addAllowedHeader("*"); // Allow headers
+        config.addAllowedMethod("*"); // Allow HTTP methods
+        config.setMaxAge(3600L);
         source.registerCorsConfiguration("/**", config);
         LOGGER.info("CORS configuration applied for all endpoints");
         return new CorsFilter(source);

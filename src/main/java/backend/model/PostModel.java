@@ -7,7 +7,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 public class PostModel {
     @Id
     private String id;
-    private String userId; // Links to User.id
+    private String userId;
     private String postImg = "default.png";
     private String postName;
     private String postCategory;

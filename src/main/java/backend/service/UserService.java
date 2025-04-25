@@ -21,7 +21,7 @@ public class UserService {
     private PasswordEncoder passwordEncoder;
 
     private static final String SECRET_KEY = "58rJZYctShDfvcPWO6ACjw8DexOpYoiYp2h1ZO9BqJ4"; // Matches JwtFilter
-    private static final long EXPIRATION_TIME = 86400000; // 24 hours
+    private static final long EXPIRATION_TIME = 86400000;
 
     public User signup(String username, String email, String password) {
         if (userRepository.findByUsername(username).isPresent() || userRepository.findByEmail(email).isPresent()) {

@@ -66,7 +66,7 @@ public class PostService {
             LOGGER.info("Saving file to: " + path.toString());
             Files.createDirectories(path.getParent());
             Files.write(path, file.getBytes());
-            post.setPostImg("/uploads/" + fileName); // Save relative path for frontend usage
+            post.setPostImg("/uploads/" + fileName);
             LOGGER.info("File updated successfully: " + path.toString());
         }
 
