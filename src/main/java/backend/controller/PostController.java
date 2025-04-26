@@ -38,6 +38,21 @@ public class PostController {
         }
     }
 
+    @GetMapping("/{postId}")
+    public ResponseEntity<?> getPostById(@PathVariable String postId) {
+        try {
+            LOGGER.info("Received GET /api/posts/" + postId);
+            PostModel post = postService.getPostById(postId);
+            return ResponseEntity.ok(post);
+        } catch (RuntimeException e) {
+            LOGGER.severe("Error fetching post: " + e.getMessage());
+            return ResponseEntity.status(404).body(Map.of("message", e.getMessage()));
+        } catch (Exception e) {
+            LOGGER.severe("Unexpected error fetching post: " + e.getMessage());
+            return ResponseEntity.status(500).body(Map.of("message", "Unexpected error occurred"));
+        }
+    }
+
     @PutMapping("/{postId}")
     public ResponseEntity<?> updatePost(
             @PathVariable String postId,
