@@ -9,9 +9,9 @@ import java.time.LocalDateTime;
 public class CommentModel {
     @Id
     private String id;
-    private String postId; // Links to PostModel.id
-    private String userId; // Links to User.id
-    private String username; // For display purposes
+    private String postId;
+    private String userId;
+    private String username;
     private String content;
     private LocalDateTime createdAt;
 

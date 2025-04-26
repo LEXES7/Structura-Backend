@@ -41,6 +41,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/posts").permitAll()
+                        .requestMatchers("/api/learns").permitAll()
+                        .requestMatchers("/api/courses").permitAll()
+
+
+
                         .requestMatchers("/api/events/upcoming").permitAll()
                         .requestMatchers("/api/events").permitAll() // For GET
                         .requestMatchers("/api/events/**").authenticated() // POST, PUT, DELETE
