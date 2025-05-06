@@ -17,9 +17,10 @@ public class User {
     private Date createdAt;
     private Date updatedAt;
 
-    // Getters, setters, and constructors
-
-
+    public User() {
+        this.createdAt = new Date();
+        this.updatedAt = new Date();
+    }
 
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }

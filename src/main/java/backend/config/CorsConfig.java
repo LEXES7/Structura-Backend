@@ -18,9 +18,9 @@ public class CorsConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowCredentials(true);
-        config.addAllowedOrigin("http://localhost:5173"); // Allow frontend
-        config.addAllowedHeader("*"); // Allow headers
-        config.addAllowedMethod("*"); // Allow HTTP methods
+        config.addAllowedOrigin("http://localhost:5173");
+        config.addAllowedHeader("*");
+        config.addAllowedMethod("*");
         config.setMaxAge(3600L);
         source.registerCorsConfiguration("/**", config);
         LOGGER.info("CORS configuration applied for all endpoints");

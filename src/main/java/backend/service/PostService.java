@@ -20,19 +20,21 @@ public class PostService {
     @Autowired
     private PostRepository postRepository;
 
-    // Updated upload directory path
+    // Updated to use resources/uploads
     private static final String UPLOAD_DIR = System.getProperty("user.dir") + "/src/main/resources/uploads/";
 
     public PostService() {
-        // Create the uploads directory if it doesn't exist
+        // Ensure upload directory exists when service starts
         try {
             Path uploadPath = Paths.get(UPLOAD_DIR);
             if (!Files.exists(uploadPath)) {
-                LOGGER.info("Creating upload directory: " + uploadPath);
+                LOGGER.info("Creating upload directory: " + uploadPath.toAbsolutePath());
                 Files.createDirectories(uploadPath);
+            } else {
+                LOGGER.info("Upload directory exists at: " + uploadPath.toAbsolutePath());
             }
         } catch (IOException e) {
-            LOGGER.severe("Could not initialize upload directory: " + e.getMessage());
+            LOGGER.severe("Failed to create upload directory: " + e.getMessage());
         }
     }
 
@@ -46,29 +48,23 @@ public class PostService {
 
         if (file != null && !file.isEmpty()) {
             String fileName = System.currentTimeMillis() + "_" + file.getOriginalFilename().replaceAll("\\s+", "_");
-            Path uploadPath = Paths.get(UPLOAD_DIR);
+            Path filePath = Paths.get(UPLOAD_DIR + fileName);
+            LOGGER.info("Saving file to: " + filePath.toAbsolutePath());
 
             // Ensure directory exists
-            if (!Files.exists(uploadPath)) {
-                LOGGER.info("Creating upload directory: " + uploadPath);
-                Files.createDirectories(uploadPath);
-            }
+            Files.createDirectories(filePath.getParent());
 
-            Path filePath = uploadPath.resolve(fileName);
-            LOGGER.info("Saving file to: " + filePath.toString());
-
-            // Copy file to destination with replace option
+            // Save the file
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
 
-            // Store the path that will be served through the API
+            // Store the path for frontend access
             post.setPostImg("/uploads/" + fileName);
-            LOGGER.info("File saved successfully with path: " + post.getPostImg());
+            LOGGER.info("File saved with path: " + post.getPostImg());
         } else {
             post.setPostImg("default.png");
             LOGGER.info("No file uploaded, using default image");
         }
 
-        LOGGER.info("Saving post to database");
         return postRepository.save(post);
     }
 
@@ -110,16 +106,15 @@ public class PostService {
 
             // Save new image
             String fileName = System.currentTimeMillis() + "_" + file.getOriginalFilename().replaceAll("\\s+", "_");
-            Path uploadPath = Paths.get(UPLOAD_DIR);
+            Path filePath = Paths.get(UPLOAD_DIR + fileName);
+            LOGGER.info("Saving new file to: " + filePath.toAbsolutePath());
 
-            if (!Files.exists(uploadPath)) {
-                Files.createDirectories(uploadPath);
-            }
+            // Ensure directory exists
+            Files.createDirectories(filePath.getParent());
 
-            Path filePath = uploadPath.resolve(fileName);
-            LOGGER.info("Saving new file to: " + filePath.toString());
-
+            // Save the file
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
             post.setPostImg("/uploads/" + fileName);
             LOGGER.info("File updated successfully with path: " + post.getPostImg());
         }

@@ -12,6 +12,9 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Date;
 import java.util.logging.Logger;
@@ -33,25 +36,36 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .csrf(csrf -> csrf.disable()) // Disable CSRF for stateless APIs
+                .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/posts").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll()
                         .requestMatchers("/api/learns").permitAll()
                         .requestMatchers("/api/courses").permitAll()
-
-
-
+                        .requestMatchers("/api/public/**").permitAll()
+                        .requestMatchers("/api/uploads/**").permitAll()
+                        .requestMatchers("/api/debug/uploads-info").permitAll()
+                        .requestMatchers("/api/files/list").permitAll()
+                        .requestMatchers("/uploads/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/reviews/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/reviews").permitAll()
                         .requestMatchers("/api/events/upcoming").permitAll()
-                        .requestMatchers("/api/events").permitAll() // For GET
-                        .requestMatchers("/api/events/**").authenticated() // POST, PUT, DELETE
+                        .requestMatchers(HttpMethod.GET, "/api/events").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/comments/post/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/comments/post/**").permitAll()
+                        .requestMatchers("/api/comments/**").authenticated()
+                        .requestMatchers("/api/events/**").authenticated()
                         .requestMatchers("/api/user/**").authenticated()
-                        .requestMatchers("/oauth2/authorization/**").permitAll()
-                        .requestMatchers("/login/oauth2/code/**").permitAll()
+                        .requestMatchers("/api/posts/user").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/posts").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/posts/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/posts/**").authenticated()
+                        .requestMatchers("/oauth2/**").permitAll()
+                        .requestMatchers("/login/oauth2/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
@@ -76,7 +90,7 @@ public class SecurityConfig {
                                 });
 
                                 String jwt = userService.generateJwt(user.getId());
-                                LOGGER.info("Generated JWT: " + jwt);
+                                LOGGER.info("Generated JWT for userId: " + user.getId());
                                 String redirectUrl = String.format(
                                         "http://localhost:5173/oauth-callback?token=%s&id=%s&username=%s&email=%s&isAdmin=%s&profilePicture=%s",
                                         jwt, user.getId(), user.getUsername(), user.getEmail(), user.isAdmin(), user.getProfilePicture()
@@ -99,15 +113,17 @@ public class SecurityConfig {
     }
 
     @Bean
-    public org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource() {
-        org.springframework.web.cors.UrlBasedCorsConfigurationSource source = new org.springframework.web.cors.UrlBasedCorsConfigurationSource();
-        org.springframework.web.cors.CorsConfiguration config = new org.springframework.web.cors.CorsConfiguration();
-        config.setAllowCredentials(true);
-        config.addAllowedOrigin("http://localhost:5173");
-        config.addAllowedHeader("*");
-        config.addAllowedMethod("*");
-        config.setMaxAge(3600L);
-        source.registerCorsConfiguration("/**", config);
+    public CorsConfigurationSource corsConfigurationSource() {
+        LOGGER.info("Configuring CORS for http://localhost:5173");
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowCredentials(true);
+        configuration.addAllowedOrigin("http://localhost:5173");
+        configuration.addAllowedHeader("*");
+        configuration.addAllowedMethod("*");
+        configuration.setMaxAge(3600L);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
         return source;
     }
 }

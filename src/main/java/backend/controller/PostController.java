@@ -16,6 +16,7 @@ import java.util.logging.Logger;
 
 @RestController
 @RequestMapping("/api/posts")
+@CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
 public class PostController {
     private static final Logger LOGGER = Logger.getLogger(PostController.class.getName());
     @Autowired

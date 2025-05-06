@@ -2,7 +2,9 @@ package backend.service;
 
 import backend.model.User;
 import backend.repository.UserRepository;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -20,8 +22,8 @@ public class UserService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    private static final String SECRET_KEY = "58rJZYctShDfvcPWO6ACjw8DexOpYoiYp2h1ZO9BqJ4"; // Matches JwtFilter
-    private static final long EXPIRATION_TIME = 86400000;
+    private static final String SECRET_KEY = "58rJZYctShDfvcPWO6ACjw8DexOpYoiYp2h1ZO9BqJ4";
+    private static final long EXPIRATION_TIME = 86400000; // 24 hours
 
     public User signup(String username, String email, String password) {
         if (userRepository.findByUsername(username).isPresent() || userRepository.findByEmail(email).isPresent()) {
@@ -86,7 +88,7 @@ public class UserService {
     }
 
     public String generateJwt(String userId) {
-        byte[] keyBytes = Decoders.BASE64.decode(SECRET_KEY); // Consistent with JwtFilter
+        byte[] keyBytes = Decoders.BASE64.decode(SECRET_KEY);
         Key key = Keys.hmacShaKeyFor(keyBytes);
         return Jwts.builder()
                 .setSubject(userId)
@@ -94,6 +96,25 @@ public class UserService {
                 .setExpiration(new java.util.Date(System.currentTimeMillis() + EXPIRATION_TIME))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
+    }
+
+    public String validateJwt(String token) {
+        try {
+            byte[] keyBytes = Decoders.BASE64.decode(SECRET_KEY);
+            Key key = Keys.hmacShaKeyFor(keyBytes);
+            return Jwts.parserBuilder()
+                    .setSigningKey(key)
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody()
+                    .getSubject();
+        } catch (ExpiredJwtException e) {
+            throw new RuntimeException("JWT token is expired");
+        } catch (MalformedJwtException e) {
+            throw new RuntimeException("Invalid JWT token");
+        } catch (Exception e) {
+            throw new RuntimeException("JWT validation failed: " + e.getMessage());
+        }
     }
 
     private void validateUsername(String username) {
