@@ -8,6 +8,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -15,6 +16,17 @@ import java.util.Map;
 public class UserController {
     @Autowired
     private UserService userService;
+
+    @GetMapping("/all")
+    public ResponseEntity<List<User>> getAllUsers(@AuthenticationPrincipal String authUserId) {
+        // Verify the requesting user is an admin
+        User requester = userService.findById(authUserId);
+        if (!requester.isAdmin()) {
+            return ResponseEntity.status(403).body(null);
+        }
+        List<User> users = userService.findAllUsers();
+        return ResponseEntity.ok(users);
+    }
 
     @PutMapping("/update/{userId}")
     public ResponseEntity<Map<String, Object>> updateUser(@PathVariable String userId, @RequestBody User user,
