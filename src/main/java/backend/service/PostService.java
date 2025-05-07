@@ -11,12 +11,16 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 @Service
 public class PostService {
     private static final Logger LOGGER = Logger.getLogger(PostService.class.getName());
+
     @Autowired
     private PostRepository postRepository;
 
@@ -45,11 +49,19 @@ public class PostService {
         post.setPostName(postName);
         post.setPostCategory(postCategory);
         post.setPostDescription(postDescription);
+        post.setCreatedAt(new Date());
+        post.setUpdatedAt(new Date());
+
+        // Initialize collections
+        post.setLikedBy(new ArrayList<>());
+        post.setShareCount(0);
 
         if (file != null && !file.isEmpty()) {
-            String fileName = System.currentTimeMillis() + "_" + file.getOriginalFilename().replaceAll("\\s+", "_");
+            String originalFilename = file.getOriginalFilename();
+            String fileName = System.currentTimeMillis() + "_" +
+                    (originalFilename != null ? originalFilename.replaceAll("\\s+", "_") : "unnamed");
             Path filePath = Paths.get(UPLOAD_DIR + fileName);
-            LOGGER.info("Saving file to: " + filePath.toAbsolutePath());
+            LOGGER.info(String.format("Saving file to: %s", filePath.toAbsolutePath()));
 
             // Ensure directory exists
             Files.createDirectories(filePath.getParent());
@@ -59,7 +71,7 @@ public class PostService {
 
             // Store the path for frontend access
             post.setPostImg("/uploads/" + fileName);
-            LOGGER.info("File saved with path: " + post.getPostImg());
+            LOGGER.info(String.format("File saved with path: %s", post.getPostImg()));
         } else {
             post.setPostImg("default.png");
             LOGGER.info("No file uploaded, using default image");
@@ -69,24 +81,107 @@ public class PostService {
     }
 
     public PostModel getPostById(String postId) {
-        LOGGER.info("Fetching post by ID: " + postId);
-        return postRepository.findById(postId)
+        LOGGER.info(String.format("Fetching post by ID: %s", postId));
+        PostModel post = postRepository.findById(postId)
                 .orElseThrow(() -> new RuntimeException("Post not found with ID: " + postId));
+
+        // Ensure collections are initialized
+        if (post.getLikedBy() == null) {
+            post.setLikedBy(new ArrayList<>());
+        }
+
+        return post;
+    }
+
+    public PostModel toggleLike(String postId, String userId) {
+        if (postId == null || postId.trim().isEmpty()) {
+            LOGGER.severe("Post ID cannot be null or empty");
+            throw new IllegalArgumentException("Post ID cannot be null or empty");
+        }
+
+        if (userId == null || userId.trim().isEmpty()) {
+            LOGGER.severe("User ID cannot be null or empty");
+            throw new IllegalArgumentException("User ID cannot be null or empty");
+        }
+
+        LOGGER.info(String.format("Toggling like for post %s by user %s", postId, userId));
+
+        try {
+            // Check if post exists
+            PostModel post = postRepository.findById(postId)
+                    .orElseThrow(() -> new RuntimeException("Post not found with ID: " + postId));
+
+            // Initialize likedBy if null
+            if (post.getLikedBy() == null) {
+                post.setLikedBy(new ArrayList<>());
+            }
+
+            // Toggle like
+            if (post.getLikedBy().contains(userId)) {
+                LOGGER.info(String.format("Removing like from user: %s", userId));
+                post.getLikedBy().remove(userId);
+            } else {
+                LOGGER.info(String.format("Adding like from user: %s", userId));
+                post.getLikedBy().add(userId);
+            }
+
+            post.setUpdatedAt(new Date());
+
+            LOGGER.info(String.format("Saving post with updated likes. Like count: %d", post.getLikedBy().size()));
+            return postRepository.save(post);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error in toggleLike: " + e.getMessage(), e);
+            throw e;  // Re-throw to propagate to the controller
+        }
+    }
+
+    public PostModel incrementShareCount(String postId) {
+        LOGGER.info(String.format("Incrementing share count for post %s", postId));
+        try {
+            PostModel post = postRepository.findById(postId)
+                    .orElseThrow(() -> new RuntimeException("Post not found with ID: " + postId));
+
+            // Fixed null check for Integer
+            Integer shareCount = post.getShareCount();
+            if (shareCount == null) {
+                post.setShareCount(1);
+            } else {
+                post.setShareCount(shareCount + 1);
+            }
+            post.setUpdatedAt(new Date());
+
+            LOGGER.info(String.format("New share count: %d", post.getShareCount()));
+            return postRepository.save(post);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error incrementing share count: " + e.getMessage(), e);
+            throw e;
+        }
     }
 
     public PostModel updatePost(String postId, String userId, String postName, String postCategory, String postDescription, MultipartFile file) throws IOException {
-        LOGGER.info("Updating post " + postId + " for user " + userId);
+        LOGGER.info(String.format("Updating post %s for user %s", postId, userId));
         PostModel post = postRepository.findById(postId)
                 .orElseThrow(() -> new RuntimeException("Post not found with ID: " + postId));
 
         if (!post.getUserId().equals(userId)) {
-            LOGGER.warning("User " + userId + " attempted to update post " + postId + " without permission");
+            LOGGER.warning(String.format("User %s attempted to update post %s without permission", userId, postId));
             throw new RuntimeException("Unauthorized to update this post");
         }
 
         post.setPostName(postName);
         post.setPostCategory(postCategory);
         post.setPostDescription(postDescription);
+        post.setUpdatedAt(new Date());
+
+        // Ensure collections are initialized
+        if (post.getLikedBy() == null) {
+            post.setLikedBy(new ArrayList<>());
+        }
+
+        Integer shareCount = post.getShareCount();
+        if (shareCount == null) {
+            post.setShareCount(0);
+        }
 
         if (file != null && !file.isEmpty()) {
             // Delete old image file if it exists and isn't the default
@@ -95,7 +190,7 @@ public class PostService {
                     String oldFilename = post.getPostImg().substring("/uploads/".length());
                     Path oldFilePath = Paths.get(UPLOAD_DIR, oldFilename);
                     if (Files.exists(oldFilePath)) {
-                        LOGGER.info("Deleting old image file: " + oldFilePath);
+                        LOGGER.info(String.format("Deleting old image file: %s", oldFilePath));
                         Files.delete(oldFilePath);
                     }
                 } catch (Exception e) {
@@ -105,9 +200,11 @@ public class PostService {
             }
 
             // Save new image
-            String fileName = System.currentTimeMillis() + "_" + file.getOriginalFilename().replaceAll("\\s+", "_");
+            String originalFilename = file.getOriginalFilename();
+            String fileName = System.currentTimeMillis() + "_" +
+                    (originalFilename != null ? originalFilename.replaceAll("\\s+", "_") : "unnamed");
             Path filePath = Paths.get(UPLOAD_DIR + fileName);
-            LOGGER.info("Saving new file to: " + filePath.toAbsolutePath());
+            LOGGER.info(String.format("Saving new file to: %s", filePath.toAbsolutePath()));
 
             // Ensure directory exists
             Files.createDirectories(filePath.getParent());
@@ -116,7 +213,7 @@ public class PostService {
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
 
             post.setPostImg("/uploads/" + fileName);
-            LOGGER.info("File updated successfully with path: " + post.getPostImg());
+            LOGGER.info(String.format("File updated successfully with path: %s", post.getPostImg()));
         }
 
         LOGGER.info("Saving updated post to database");
@@ -124,12 +221,12 @@ public class PostService {
     }
 
     public void deletePost(String postId, String userId) {
-        LOGGER.info("Deleting post " + postId + " for user " + userId);
+        LOGGER.info(String.format("Deleting post %s for user %s", postId, userId));
         PostModel post = postRepository.findById(postId)
                 .orElseThrow(() -> new RuntimeException("Post not found with ID: " + postId));
 
         if (!post.getUserId().equals(userId)) {
-            LOGGER.warning("User " + userId + " attempted to delete post " + postId + " without permission");
+            LOGGER.warning(String.format("User %s attempted to delete post %s without permission", userId, postId));
             throw new RuntimeException("Unauthorized to delete this post");
         }
 
@@ -139,7 +236,7 @@ public class PostService {
                 String filename = post.getPostImg().substring("/uploads/".length());
                 Path filePath = Paths.get(UPLOAD_DIR, filename);
                 if (Files.exists(filePath)) {
-                    LOGGER.info("Deleting image file: " + filePath);
+                    LOGGER.info(String.format("Deleting image file: %s", filePath));
                     Files.delete(filePath);
                 }
             } catch (Exception e) {
@@ -153,12 +250,38 @@ public class PostService {
     }
 
     public List<PostModel> getPostsByUserId(String userId) {
-        LOGGER.info("Fetching posts for userId: " + userId);
-        return postRepository.findByUserId(userId);
+        LOGGER.info(String.format("Fetching posts for userId: %s", userId));
+        List<PostModel> posts = postRepository.findByUserId(userId);
+
+        // Ensure collections are initialized for all posts
+        for (PostModel post : posts) {
+            if (post.getLikedBy() == null) {
+                post.setLikedBy(new ArrayList<>());
+            }
+            Integer shareCount = post.getShareCount();
+            if (shareCount == null) {
+                post.setShareCount(0);
+            }
+        }
+
+        return posts;
     }
 
     public List<PostModel> getAllPosts() {
         LOGGER.info("Fetching all posts");
-        return postRepository.findAll();
+        List<PostModel> posts = postRepository.findAll();
+
+        // Ensure collections are initialized for all posts
+        for (PostModel post : posts) {
+            if (post.getLikedBy() == null) {
+                post.setLikedBy(new ArrayList<>());
+            }
+            Integer shareCount = post.getShareCount();
+            if (shareCount == null) {
+                post.setShareCount(0);
+            }
+        }
+
+        return posts;
     }
 }

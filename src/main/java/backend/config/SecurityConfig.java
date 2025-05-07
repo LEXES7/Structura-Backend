@@ -9,11 +9,10 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -31,19 +30,13 @@ public class SecurityConfig {
     private static final Logger LOGGER = Logger.getLogger(SecurityConfig.class.getName());
     private final UserService userService;
     private final JwtFilter jwtFilter;
-    private final PasswordEncoder passwordEncoder; // Inject the bean instead of creating it
+    private final PasswordEncoder passwordEncoder;
 
     public SecurityConfig(UserService userService, JwtFilter jwtFilter, PasswordEncoder passwordEncoder) {
         this.userService = userService;
         this.jwtFilter = jwtFilter;
         this.passwordEncoder = passwordEncoder;
     }
-
-    // Remove this method to avoid the bean conflict
-    // @Bean
-    // public PasswordEncoder passwordEncoder() {
-    //     return new BCryptPasswordEncoder();
-    // }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -57,6 +50,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll()
+                        // Add these new rules for likes and shares
+                        .requestMatchers(HttpMethod.POST, "/api/posts/*/like").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/posts/*/share").permitAll()
                         .requestMatchers("/api/learns").permitAll()
                         .requestMatchers("/api/courses").permitAll()
                         .requestMatchers("/api/public/**").permitAll()
@@ -125,7 +121,7 @@ public class SecurityConfig {
                                             newUser.setProfilePicture(photoUrl);
                                         }
 
-                                        newUser.setPassword(passwordEncoder.encode(UUID.randomUUID().toString())); // Use injected passwordEncoder
+                                        newUser.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
                                         newUser.setCreatedAt(new Date());
                                         newUser.setUpdatedAt(new Date());
 
